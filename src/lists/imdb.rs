@@ -177,7 +177,7 @@ fn process_title_principals(ldr: &Loader, ratings: &HashMap<u32,u64>) -> HashMap
     for res in rdr.deserialize::<TitlePrincipalData>() {
         let rec = res.unwrap();
         if let Some(&votes) = ratings.get(&to_num(&rec.tconst)) {
-            if rec.ordering <= ACTOR_LIMIT && &rec.category == "actor" {
+            if rec.ordering <= ACTOR_LIMIT && rec.category.starts_with("act") {
                 add_item(&mut counts, to_num(&rec.nconst), votes * ACTOR_WEIGHTS[rec.ordering-1]);
             }
         }
