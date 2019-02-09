@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied,Vacant};
 use std::io::Write;
 
-use ::normalize::Key;
+use crate::normalize::{Key, normalize};
 
 pub struct WordlistGenerator
 {
@@ -20,8 +20,8 @@ impl WordlistGenerator
 
     pub fn add(&mut self, name: String, freq: u64) {
         if freq >= self.cutoff {
-            let norm = ::normalize::normalize(&name);
-            let key = ::normalize::key(&norm);
+            let norm = normalize(&name);
+            let key = crate::normalize::key(&norm);
             if key.is_empty() { return; }
             match self.data.entry(key) {
                 Occupied(mut ent) => {

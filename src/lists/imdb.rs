@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use csv;
 use flate2::read::GzDecoder;
 use rayon::join;
-use wordlist::{WordlistGenerator, write_wordlist};
-use io::load_url;
+use crate::wordlist::{WordlistGenerator, write_wordlist};
+use crate::io::load_url;
 
 const ACTOR_LIMIT: usize = 37;
 const ACTOR_WEIGHTS: [u64; ACTOR_LIMIT] = [100, 88, 77, 68, 60, 53, 47, 41, 36,
