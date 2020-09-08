@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use csv;
-use flate2::read::GzDecoder;
 use rayon::join;
 use crate::wordlist::{WordlistGenerator, write_wordlist};
 use crate::io::load_url;
@@ -61,7 +59,7 @@ struct TitleAkaData
 
 pub trait Loader: Sync
 {
-    fn load(&self, name: &str) -> Box<Read>;
+    fn load(&self, name: &str) -> Box<dyn Read>;
 }
 
 pub struct LocalLoader
@@ -71,11 +69,11 @@ pub struct LocalLoader
 
 impl Loader for LocalLoader
 {
-    fn load(&self, name: &str) -> Box<Read> {
+    fn load(&self, name: &str) -> Box<dyn Read> {
         let fname = format!("{}.tsv.gz", name);
         let path = self.path.join(fname);
         let f = File::open(path).unwrap();
-        Box::new(GzDecoder::new(f))
+        Box::new(flate2::read::GzDecoder::new(f))
     }
 }
 
@@ -83,10 +81,10 @@ pub struct WebLoader {}
 
 impl Loader for WebLoader
 {
-    fn load(&self, name: &str) -> Box<Read> {
+    fn load(&self, name: &str) -> Box<dyn Read> {
         let url = format!("https://datasets.imdbws.com/{}.tsv.gz",name);
         let f = load_url(&url).unwrap();
-        Box::new(GzDecoder::new(f))
+        Box::new(flate2::bufread::GzDecoder::new(f))
     }
 }
 
@@ -101,7 +99,7 @@ fn add_item(map: &mut HashMap<u32,u64>, key: u32, amt: u64)
     *counter += amt;
 }
 
-fn make_reader(rdr: Box<Read>) -> csv::Reader<Box<Read>>
+fn make_reader(rdr: Box<dyn Read>) -> csv::Reader<Box<dyn Read>>
 {
     csv::ReaderBuilder::new()
         .delimiter(b'\t')
@@ -115,7 +113,7 @@ fn make_rating(d: csv::Result<TitleRatingData>) -> (u32,u64)
     (to_num(&data.tconst), data.num_votes)
 }
 
-fn process_title_ratings(ldr: &Loader) -> HashMap<u32,u64>
+fn process_title_ratings(ldr: &dyn Loader) -> HashMap<u32,u64>
 {
     let f = ldr.load("title.ratings");
     let mut rdr = make_reader(f);
@@ -124,7 +122,7 @@ fn process_title_ratings(ldr: &Loader) -> HashMap<u32,u64>
         .collect()
 }
 
-fn process_title_akas(ldr: &Loader) -> HashMap<u32,Vec<String>>
+fn process_title_akas(ldr: &dyn Loader) -> HashMap<u32,Vec<String>>
 {
     let f = ldr.load("title.akas");
     let mut rdr = make_reader(f);
@@ -140,7 +138,7 @@ fn process_title_akas(ldr: &Loader) -> HashMap<u32,Vec<String>>
     akas
 }
 
-fn process_title_basics(ldr: &Loader, mut ratings: HashMap<u32,u64>,
+fn process_title_basics(ldr: &dyn Loader, mut ratings: HashMap<u32,u64>,
     mut akas: HashMap<u32,Vec<String>>, movie_cutoff: u64, tv_cutoff: u64)
     -> (HashMap<u32,u64>, Vec<(String,u64)>, Vec<(String,u64)>)
 {
@@ -169,7 +167,7 @@ fn process_title_basics(ldr: &Loader, mut ratings: HashMap<u32,u64>,
     (ratings, movies.generate(), tv.generate())
 }
 
-fn process_title_principals(ldr: &Loader, ratings: &HashMap<u32,u64>) -> HashMap<u32,u64>
+fn process_title_principals(ldr: &dyn Loader, ratings: &HashMap<u32,u64>) -> HashMap<u32,u64>
 {
     let f = ldr.load("title.principals");
     let mut rdr = make_reader(f);
@@ -185,7 +183,7 @@ fn process_title_principals(ldr: &Loader, ratings: &HashMap<u32,u64>) -> HashMap
     counts
 }
 
-fn process_name_basics(ldr: &Loader, actor_votes: &HashMap<u32,u64>, cutoff: u64) -> Vec<(String,u64)>
+fn process_name_basics(ldr: &dyn Loader, actor_votes: &HashMap<u32,u64>, cutoff: u64) -> Vec<(String,u64)>
 {
     let f = ldr.load("name.basics");
     let mut rdr = make_reader(f);
@@ -199,21 +197,21 @@ fn process_name_basics(ldr: &Loader, actor_votes: &HashMap<u32,u64>, cutoff: u64
     actors.generate()
 }
 
-fn process_movies(movies: &Vec<(String,u64)>, path: &Path)
+fn process_movies(movies: &[(String,u64)], path: &Path)
 {
     let fname = path.join("imdb_movies.txt");
     let mut movie_file = File::create(fname).unwrap();
     write_wordlist(&mut movie_file, &movies).unwrap();
 }
 
-fn process_tv(tv: &Vec<(String,u64)>, path: &Path)
+fn process_tv(tv: &[(String,u64)], path: &Path)
 {
     let fname = path.join("imdb_tv.txt");
     let mut tv_file = File::create(fname).unwrap();
     write_wordlist(&mut tv_file, &tv).unwrap();
 }
 
-fn process_actors(ldr: &Loader, ratings: &HashMap<u32,u64>, path: &Path)
+fn process_actors(ldr: &dyn Loader, ratings: &HashMap<u32,u64>, path: &Path)
 {
     let actor_votes = process_title_principals(ldr, &ratings);
     let actors = process_name_basics(ldr, &actor_votes, 800000);
@@ -222,7 +220,7 @@ fn process_actors(ldr: &Loader, ratings: &HashMap<u32,u64>, path: &Path)
     write_wordlist(&mut actor_file, &actors).unwrap();
 }
 
-pub fn make_all(ldr: &Loader, out_path: &Path)
+pub fn make_all(ldr: &dyn Loader, out_path: &Path)
 {
     let (pre_ratings, akas) = join(
         || process_title_ratings(ldr),

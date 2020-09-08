@@ -28,7 +28,7 @@ pub fn normalize(s: &str) -> String
             }
         }
     }
-    if ss.ends_with(" ") {
+    if ss.ends_with(' ') {
         ss.pop();
     }
     ss

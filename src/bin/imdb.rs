@@ -20,7 +20,7 @@ fn main()
             .required(true)
             .help("the directory to which the wordlists will be saved"))
         .get_matches();
-    let loader: Box<Loader> = if let Some(dir) = matches.value_of("indir") {
+    let loader: Box<dyn Loader> = if let Some(dir) = matches.value_of("indir") {
         Box::new(LocalLoader { path: PathBuf::from(dir) })
     } else {
         Box::new(WebLoader {})
