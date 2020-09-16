@@ -1,5 +1,3 @@
-use unidecode::unidecode;
-
 pub type Key = Vec<u8>;
 
 /// Converts a Unicode string into a form suitable for wordlists.
@@ -8,7 +6,7 @@ pub type Key = Vec<u8>;
 /// digits, and spaces.
 pub fn normalize(s: &str) -> String
 {
-    let dec = unidecode(s);
+    let dec = deunicode::deunicode(s);
     let mut ss = String::with_capacity(dec.len());
     let mut brk = true;
     for c in dec.chars() {

@@ -5,8 +5,8 @@ pub mod wordlist;
 
 extern crate csv;
 extern crate curl;
+extern crate deunicode;
 extern crate flate2;
 extern crate rayon;
 extern crate serde;
-extern crate unidecode;
 #[macro_use] extern crate serde_derive;
